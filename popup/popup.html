@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comparify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="w-[520px] h-[480px] bg-gray-50 overflow-hidden">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white relative shadow-md">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="bg-white/20 p-1.5 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+          </svg>
+        </div>
+        <h1 class="text-xl font-bold">Comparify</h1>
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="history-btn" class="hover:bg-white/20 p-2 rounded-lg transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </button>
+        <button id="chart-btn" class="hover:bg-white/20 p-2 rounded-lg transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </button>
+        <button id="close-btn" class="hover:bg-white/20 p-2 rounded-lg transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="h-[calc(100%-68px)] overflow-y-auto">
+    <div class="p-4">
+      <!-- Greeting -->
+      <div class="mb-4 bg-white rounded-xl p-4 shadow-sm">
+        <h2 class="text-base font-bold text-gray-800 mb-1">Hello! 👋</h2>
+        <p class="text-xs text-gray-600">I'm your AI shopping assistant. Compare prices and save money!</p>
+      </div>
+
+      <!-- Product Link Input -->
+      <div class="mb-3 bg-white rounded-xl p-4 shadow-sm">
+        <label class="block text-xs font-semibold text-gray-700 mb-2">Product Link</label>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 hover:border-purple-300 transition">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+            </svg>
+            <input 
+              type="text" 
+              id="product-url" 
+              placeholder="Paste product URL here..."
+              class="flex-1 text-xs text-gray-700 bg-transparent border-none outline-none"
+            />
+          </div>
+          <button 
+            id="paste-btn" 
+            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg transition font-medium text-xs shadow-sm"
+          >
+            Paste
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <button id="compare-prices" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-3 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          Compare Prices
+        </button>
+        <button id="summarize-btn" class="bg-white hover:bg-gray-50 border-2 border-purple-200 text-purple-700 font-semibold py-3 px-3 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Summarize
+        </button>
+      </div>
+
+      <!-- Price Comparison Results -->
+      <div id="price-comparison" class="hidden mb-3">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-purple-100">
+          <h3 class="text-xs font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Price Comparison Results
+          </h3>
+          <div id="price-table" class="space-y-2">
+            <!-- Prices will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Assistant Section -->
+      <div class="bg-white rounded-xl p-4 shadow-sm mb-3">
+        <label class="block text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+          </svg>
+          AI Shopping Assistant
+        </label>
+        <textarea 
+          id="ai-input" 
+          rows="2" 
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs resize-none bg-gray-50 hover:border-purple-300 transition mb-2"
+          placeholder="E.g., Find best smartphone under $500..."
+        ></textarea>
+        <button id="generate-btn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 shadow-md text-xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          Generate AI Insights
+        </button>
+        <p class="text-[10px] text-gray-400 text-center mt-2">Powered by GPT 4.0</p>
+      </div>
+
+      <!-- Track Product Button (Hidden by default) -->
+      <button id="track-product" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 px-4 rounded-xl transition mt-3 hidden text-xs shadow-md">
+        🔔 Track this Product
+      </button>
+
+      <!-- Status Message -->
+      <div id="status" class="text-xs text-center text-gray-500 mt-2"></div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
