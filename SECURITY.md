@@ -26,13 +26,13 @@ git push
 ❌ **Share Your API Key in Chat/Email**
 ```javascript
 // WRONG - Never share this
-rapidapi: { key: '5954ac5ca8mshb4b27475c4b421bp182218jsndebacf14b37b' }
+rapidapi: { key: 'yourkey' }
 ```
 
 ❌ **Expose Key in Frontend Code**
 ```javascript
 // WRONG - Don't put key in content scripts or HTML
-const API_KEY = '5954ac5ca8mshb4b27475c4b421bp182218jsndebacf14b37b';
+const API_KEY = 'your key';
 ```
 
 ❌ **Use Key in Browser Console**
