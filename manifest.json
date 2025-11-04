@@ -3,11 +3,6 @@
   "name": "Comparify",
   "description": "AI-powered shopping assistant - Compare prices, get smart recommendations, and save money across multiple online shops.",
   "version": "1.0.0",
-  "icons": {
-    "128": "assets/icon128.png",
-    "48": "assets/icon48.png",
-    "16": "assets/icon16.png"
-  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -35,9 +30,7 @@
     "notifications",
     "alarms"
   ],
-  "host_permissions": [
-    "*://*/*"
-  ],
+  "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
       "resources": ["overlay/*", "assets/*", "scripts/*"],
