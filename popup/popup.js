@@ -562,9 +562,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       const GEMINI_API_KEY = (typeof GEMINI_CONFIG !== 'undefined' && GEMINI_CONFIG.API_KEY) 
         ? GEMINI_CONFIG.API_KEY 
         : 'YOUR_GEMINI_API_KEY_HERE';
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+      const API_URL = (typeof GEMINI_CONFIG !== 'undefined' && GEMINI_CONFIG.API_URL)
+        ? GEMINI_CONFIG.API_URL
+        : 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+      
+      const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY
+        },
         body: JSON.stringify({
           contents: [{
             parts: [{
