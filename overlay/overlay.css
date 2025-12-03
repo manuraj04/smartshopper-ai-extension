@@ -1,0 +1,5 @@
+#smartshopper-overlay.ss-overlay { position: fixed; right: 12px; top: 12px; width: 320px; max-width: calc(100% - 24px); background: white; box-shadow: 0 6px 20px rgba(0,0,0,0.15); border-radius: 8px; z-index: 2147483647; font-family: Arial, Helvetica, sans-serif; }
+#smartshopper-overlay .ss-header { display:flex; align-items:center; gap:8px; padding:10px; border-bottom:1px solid #eee; }
+#smartshopper-overlay .ss-header img { width:32px; height:32px }
+#smartshopper-overlay .ss-header button { margin-left:auto; background:transparent; border:none; cursor:pointer; font-size:16px }
+#smartshopper-overlay .ss-body { padding:12px }

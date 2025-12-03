@@ -1,0 +1,141 @@
+:root{
+  --bg: #f9fafb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --accent-gradient: linear-gradient(90deg,#7c3aed,#4f46e5);
+  --radius: 12px;
+  --text: #111827;
+  --text-light: #374151;
+  --border: #e5e7eb;
+}
+@media (prefers-color-scheme: dark) {
+  :root{
+    --bg: #1f2937;
+    --card: #374151;
+    --muted: #9ca3af;
+    --text: #f9fafb;
+    --text-light: #e5e7eb;
+    --border: #4b5563;
+  }
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+body{background:transparent}
+
+/* popup container */
+.popup-root{
+  width:320px;
+  max-width:360px;
+  min-width:280px;
+  height:480px;
+  display:flex;
+  flex-direction:column;
+  background:var(--bg);
+  color:var(--text);
+  padding:10px;
+}
+
+/* header */
+.popup-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;background:var(--card);border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.06)}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#fff,#f3f4f6)}
+.logo-svg{width:22px;height:22px;color:var(--primary)}
+.app-title{font-size:14px;margin:0;font-weight:600}
+.header-controls{display:flex;gap:6px}
+.icon-btn{background:transparent;border:0;padding:6px;border-radius:8px;cursor:pointer;font-size:14px}
+
+/* content area - scrollable */
+.popup-content{flex:1;overflow:auto;padding-top:10px}
+
+/* greeting */
+.greeting{background:linear-gradient(135deg,#f3e8ff,#e0e7ff);padding:12px;border-radius:10px;margin-bottom:10px;border:1px solid #c4b5fd}
+.greeting strong{display:block;font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px}
+.muted{color:var(--muted);font-size:12px}
+
+/* input */
+.input-section{margin-bottom:10px}
+.label{display:block;font-size:12px;margin-bottom:6px;color:var(--text-light);font-weight:600}
+.input-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);padding:8px;border-radius:10px;transition:border 0.2s}
+.input-row:focus-within{border-color:var(--primary)}
+.link-icon{width:16px;height:16px;color:var(--muted)}
+input#product-url{flex:1;border:0;outline:none;font-size:12px;background:transparent;color:var(--text);padding:2px}
+input#product-url::placeholder{color:var(--muted)}
+.btn{background:var(--primary);color:#fff;border:0;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:all 0.2s}
+.btn:hover{background:var(--primary-hover);transform:scale(1.02)}
+.btn:active{transform:scale(0.98)}
+
+/* actions */
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.primary{background:var(--card);color:var(--primary);padding:10px;border-radius:10px;border:2px solid var(--primary);cursor:pointer;font-weight:600;font-size:13px;transition:all 0.2s}
+.primary:hover{background:var(--primary);color:#fff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,0.3)}
+.primary:active{transform:translateY(0)}
+.secondary{background:var(--card);border:2px solid var(--border);color:var(--text-light);padding:10px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px;transition:all 0.2s}
+.secondary:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,0.2)}
+.secondary:active{transform:translateY(0)}
+
+/* results */
+.results{background:var(--card);border:2px solid var(--border);padding:12px;border-radius:10px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.results h3{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px}
+.price-table{display:flex;flex-direction:column;gap:8px}
+.price-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;font-size:13px;border:1px solid var(--border);transition:all 0.2s}
+.price-row:hover{border-color:var(--primary);transform:translateX(2px)}
+.price-row .site-name{font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.price-row .price-value{font-weight:700;color:#059669;font-size:15px}
+.price-row.best-price{background:linear-gradient(135deg,#d1fae5,#dbeafe);border:2px solid #059669}
+.price-row.best-price .price-value{color:#065f46;font-size:17px;font-weight:800}
+.price-row .badge{background:#059669;color:#fff;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:600}
+
+/* ai */
+.ai-section{background:linear-gradient(135deg,#faf5ff,#f3f4ff);padding:12px;border-radius:10px;border:1px solid #e9d5ff}
+textarea#ai-input{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);resize:none;font-size:12px;background:var(--card);color:var(--text);margin-bottom:8px;font-family:inherit;transition:border 0.2s}
+textarea#ai-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,58,237,0.1)}
+textarea#ai-input::placeholder{color:var(--muted)}
+.primary.full{width:100%}
+.tiny{font-size:11px;margin-top:6px;color:var(--muted);text-align:center}
+
+/* track */
+.track{width:100%;padding:10px;border-radius:10px;border:0;background:linear-gradient(90deg,#10b981,#059669);color:#fff;margin-top:8px;cursor:pointer}
+
+/* === FIX: Make card sections readable === */
+.card {
+  background-color: var(--card);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 4px 10px rgba(2,6,23,0.45);
+}
+
+/* Make price table visible */
+.price-table, .price-table * {
+  color: var(--text);
+}
+
+/* Fix scrolling inside content */
+.p-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  background-color: var(--bg);
+}
+
+/* Ensure popup-content (existing selector) also gets scrolling fix */
+.popup-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  background-color: var(--bg);
+}
+
+/* misc */
+.status{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+.hidden{display:none}
+
+/* responsive for very narrow popup windows */
+@media (max-width:320px){
+  .popup-root{width:100vw;border-radius:0}
+}
+
+

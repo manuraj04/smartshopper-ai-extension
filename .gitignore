@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Environment & Config - CRITICAL: Never commit API keys!
+.env
+.env.local
+.env.production
+server/.env
+server/.env.template
+config.js
+
+# API Configuration - Keep example file, ignore actual config
+gemini-config.js
+!gemini-config.example.js
+
+# API Keys and Secrets - SECURITY
+**/api-keys.txt
+**/secrets.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+
+# Extension package
+*.zip
+*.crx
+*.pem
+
+# Temporary documentation (keep only main README.md)
+API_INTEGRATION.md
+GEMINI_SETUP.md
+GITINGNORE_EXPLAINED.md
+RAPIDAPI_SETUP.md
+REDESIGN_COMPLETE.md
+SECURITY.md
+SETUP_COMPLETE.md
+TESTING.md
+UI_PREVIEW.md
+UPDATE_SUMMARY.md

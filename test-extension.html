@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartShopper - Extension Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { 
+      color: #0b74de; 
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    button {
+      background: #0b74de;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+      transition: all 0.3s;
+    }
+    button:hover { 
+      background: #0960c2; 
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(11, 116, 222, 0.3);
+    }
+    button:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .success { color: #22c55e; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    .warning { color: #f59e0b; font-weight: bold; }
+    .info { color: #3b82f6; }
+    #results {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9fafb;
+      border-radius: 8px;
+      max-height: 500px;
+      overflow: auto;
+      border: 1px solid #e2e8f0;
+    }
+    .test-item {
+      padding: 15px;
+      margin: 12px 0;
+      border-left: 4px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .test-item.pass { border-color: #22c55e; }
+    .test-item.fail { border-color: #ef4444; }
+    .test-item.warning { border-color: #f59e0b; }
+    pre { 
+      white-space: pre-wrap; 
+      word-wrap: break-word;
+      font-size: 12px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .security-notice {
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .security-notice strong {
+      color: #f59e0b;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .stats {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+      padding: 15px;
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 SmartShopper AI - Extension Test</h1>
+    <p class="subtitle">Safely test your extension APIs without exposing credentials</p>
+
+    <div class="security-notice">
+      <strong>🔒 Security Notice:</strong> This test page uses Chrome extension APIs which protect your API key. 
+      Your RapidAPI key is stored in <code>config.js</code> and is gitignored. Never commit this file or share your key publicly.
+    </div>
+
+    <div class="button-group">
+      <button onclick="testExtensionLoaded()">1. Check Extension</button>
+      <button onclick="testAPIConnection()">2. Test API</button>
+      <button onclick="testAmazonProduct()">3. Test Product Fetch</button>
+      <button onclick="testStorageSystem()">4. Test Storage</button>
+      <button onclick="runAllTests()" style="background: #22c55e;">▶ Run All Tests</button>
+      <button onclick="clearResults()" style="background: #64748b;">Clear Results</button>
+    </div>
+
+    <div class="stats" id="stats" style="display: none;">
+      <div class="stat-item">
+        <div class="stat-value" id="passCount">0</div>
+        <div class="stat-label">Passed</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="failCount">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const resultsDiv = document.getElementById('results');
+    const statsDiv = document.getElementById('stats');
+    let passCount = 0;
+    let failCount = 0;
+
+    function updateStats() {
+      statsDiv.style.display = 'flex';
+      document.getElementById('passCount').textContent = passCount;
+      document.getElementById('failCount').textContent = failCount;
+      document.getElementById('totalCount').textContent = passCount + failCount;
+      document.getElementById('passCount').parentElement.style.background = passCount > 0 ? '#dcfce7' : 'white';
+      document.getElementById('failCount').parentElement.style.background = failCount > 0 ? '#fee2e2' : 'white';
+    }
+
+    function showResult(title, status, message, data = null) {
+      if (status === 'pass') passCount++;
+      if (status === 'fail') failCount++;
+      updateStats();
+
+      const div = document.createElement('div');
+      div.className = `test-item ${status}`;
+      div.innerHTML = `
+        <strong>${status === 'pass' ? '✅' : status === 'fail' ? '❌' : '⚠️'} ${title}</strong><br>
+        <span class="${status === 'pass' ? 'success' : status === 'fail' ? 'error' : 'warning'}">${message}</span>
+        ${data ? `<pre>${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}</pre>` : ''}
+      `;
+      resultsDiv.appendChild(div);
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+
+    function clearResults() {
+      resultsDiv.innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+      updateStats();
+    }
+
+    async function testExtensionLoaded() {
+      showResult('Extension Check', 'warning', 'Checking if extension is loaded...', null);
+      
+      try {
+        // Check if Chrome extension APIs are available
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          showResult('Extension Loaded', 'pass', 'Chrome extension APIs detected! Extension is loaded.', {
+            extensionId: chrome.runtime.id,
+            manifest: chrome.runtime.getManifest().version
+          });
+        } else {
+          showResult('Extension Not Loaded', 'fail', 
+            'Extension not detected. Please:\n1. Open chrome://extensions/\n2. Enable "Developer mode"\n3. Click "Load unpacked"\n4. Select the extension folder\n5. Reload this page', null);
+        }
+      } catch (error) {
+        showResult('Extension Check Failed', 'fail', error.message, null);
+      }
+    }
+
+    async function testAPIConnection() {
+      showResult('API Test', 'warning', 'Testing RapidAPI connection...', null);
+      
+      try {
+        if (typeof chrome === 'undefined' || !chrome.runtime) {
+          showResult('API Test Skipped', 'fail', 'Extension must be loaded first. Run Test 1.', null);
+          return;
+        }
+
+        // Use extension's background script to test API (keeps key secure)
+        const response = await chrome.runtime.sendMessage({
+          action: 'testAPI',
+          asin: 'B07ZPKBL9V'
+        });
+
+        if (response && response.success) {
+          showResult('API Connection', 'pass', 'Successfully connected to RapidAPI!', {
+            productTitle: response.data?.product_title || 'N/A',
+            price: response.data?.product_price || 'N/A'
+          });
+        } else {
+          showResult('API Connection Failed', 'fail', response?.error || 'Unknown error', null);
+        }
+      } catch (error) {
+        showResult('API Test Error', 'fail', error.message, null);
+      }
+    }
+
+    async function testAmazonProduct() {
+      showResult('Product Fetch', 'warning', 'Testing Amazon product fetch...', null);
+      
+      try {
+        if (typeof chrome === 'undefined' || !chrome.runtime) {
+          showResult('Product Test Skipped', 'fail', 'Extension must be loaded first. Run Test 1.', null);
+          return;
+        }
+
+        const response = await chrome.runtime.sendMessage({
+          action: 'searchProduct',
+          query: 'iPhone 15'
+        });
+
+        if (response && response.success) {
+          showResult('Product Search', 'pass', `Found ${response.data?.length || 0} products`, 
+            response.data?.slice(0, 3).map(p => ({
+              title: p.product_title,
+              price: p.product_price,
+              rating: p.product_star_rating
+            }))
+          );
+        } else {
+          showResult('Product Search Failed', 'fail', response?.error || 'No products found', null);
+        }
+      } catch (error) {
+        showResult('Product Test Error', 'fail', error.message, null);
+      }
+    }
+
+    async function testStorageSystem() {
+      showResult('Storage Test', 'warning', 'Testing Chrome storage...', null);
+      
+      try {
+        if (typeof chrome === 'undefined' || !chrome.storage) {
+          showResult('Storage Test Skipped', 'fail', 'Extension must be loaded first. Run Test 1.', null);
+          return;
+        }
+
+        // Test write
+        const testData = { 
+          testItem: { 
+            name: 'Test Product', 
+            price: 999, 
+            timestamp: Date.now() 
+          } 
+        };
+        await chrome.storage.local.set(testData);
+        
+        // Test read
+        const result = await chrome.storage.local.get('testItem');
+        
+        if (result.testItem && result.testItem.name === 'Test Product') {
+          showResult('Storage System', 'pass', 'Chrome storage working correctly!', result.testItem);
+          
+          // Cleanup
+          await chrome.storage.local.remove('testItem');
+        } else {
+          showResult('Storage Read Failed', 'fail', 'Could not read back test data', null);
+        }
+      } catch (error) {
+        showResult('Storage Test Error', 'fail', error.message, null);
+      }
+    }
+
+    async function runAllTests() {
+      clearResults();
+      showResult('Test Suite', 'warning', 'Running all tests...', null);
+      
+      await testExtensionLoaded();
+      await new Promise(r => setTimeout(r, 500));
+      
+      await testAPIConnection();
+      await new Promise(r => setTimeout(r, 500));
+      
+      await testAmazonProduct();
+      await new Promise(r => setTimeout(r, 500));
+      
+      await testStorageSystem();
+      
+      showResult('Test Suite Complete', passCount > 0 && failCount === 0 ? 'pass' : 'warning', 
+        `Completed with ${passCount} passed and ${failCount} failed tests.`, null);
+    }
+
+    // Auto-test on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        testExtensionLoaded();
+      }, 500);
+    });
+  </script>
+</body>
+</html>

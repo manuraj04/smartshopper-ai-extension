@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Comparify</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup-root" role="dialog" aria-label="Comparify popup">
+    <header class="popup-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <!-- simple tag icon -->
+          <svg viewBox="0 0 24 24" class="logo-svg" fill="none" stroke="currentColor">
+            <path d="M3 12V7a4 4 0 014-4h5l7 7a2 2 0 010 2.828L14 22a2 2 0 01-2.828 0L4 14.828" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="app-title">Comparify</h1>
+      </div>
+      <div class="header-controls">
+        <button id="history-btn" class="icon-btn" aria-label="History" title="History">⟳</button>
+        <button id="close-btn" class="icon-btn" aria-label="Close" title="Close">✕</button>
+      </div>
+    </header>
+
+    <main class="popup-content">
+      <section class="greeting">
+        <strong>Hello! 👋</strong>
+        <p class="muted">AI shopping assistant — compare prices and save money.</p>
+      </section>
+
+      <section class="input-section" aria-label="Product link input">
+        <label for="product-url" class="label">Product Link</label>
+        <div class="input-row">
+          <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <input id="product-url" type="text" placeholder="Paste product URL here..." />
+          <button id="paste-btn" class="btn" aria-label="Paste from clipboard">Paste</button>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button id="compare-prices" class="primary">Compare Prices</button>
+        <button id="summarize-btn" class="secondary">Summarize</button>
+      </section>
+
+      <section id="price-comparison" class="results hidden" aria-live="polite">
+        <h3>Price Comparison Results</h3>
+        <div id="price-table" class="price-table"></div>
+      </section>
+
+      <section class="ai-section">
+        <label for="ai-input" class="label">AI Shopping Assistant</label>
+        <textarea id="ai-input" rows="2" placeholder="E.g., Best smartphone under ₹30,000"></textarea>
+        <button id="generate-btn" class="primary full">Generate AI Insights</button>
+        <p class="tiny muted">Powered by Gemini Pro </p>
+      </section>
+
+      <button id="track-product" class="track hidden">🔔 Track this Product</button>
+
+      <div id="status" class="status muted"></div>
+    </main>
+  </div>
+
+  <!-- Load API configuration before main script -->
+  <script src="../gemini-config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
