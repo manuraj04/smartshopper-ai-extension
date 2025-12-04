@@ -4,6 +4,11 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const priceRoutes = require('./routes/priceRoutes');
 const trendRoutes = require('./routes/trendRoutes');
+const scraper = require('./utils/scraper');
+
+// New v1 API routes
+const priceV1Routes = require('./routes/price');
+const searchRoutes = require('./routes/search-crosssite');
 
 const app = express();
 
@@ -14,7 +19,11 @@ app.use(bodyParser.json());
 // TODO: Add authentication middleware
 // app.use('/api', authMiddleware);
 
-// API Routes
+// V1 API Routes (new canonical endpoints)
+app.use('/v1', priceV1Routes);
+app.use('/v1', searchRoutes);
+
+// Legacy API Routes
 app.use('/api/prices', priceRoutes);
 app.use('/api/trend', trendRoutes);
 app.use('/api/price-history', require('./routes/priceHistoryRoutes'));
@@ -26,12 +35,24 @@ app.get('/', (req, res) => res.json({
   message: 'SmartShopper AI Server',
   version: '1.0.0',
   endpoints: [
-    'POST /api/prices - Get prices from multiple sites',
-    'POST /api/trend - Get price trends',
-    'POST /api/price-history - Get historical prices',
-    'POST /api/track - Track product for alerts'
+    'GET /v1/price - Get price data for product (new)',
+    'GET /v1/search-crosssite - Find matches across sites (new)',
+    'GET /healthz - Health check',
+    'POST /api/prices - Get prices from multiple sites (legacy)',
+    'POST /api/trend - Get price trends (legacy)',
+    'POST /api/price-history - Get historical prices (legacy)',
+    'POST /api/track - Track product for alerts (legacy)'
   ]
 }));
+
+// Health check endpoint
+app.get('/healthz', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: Date.now(),
+    uptime: process.uptime()
+  });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -44,7 +65,27 @@ app.use((err, req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`✨ SmartShopper AI Server running on http://localhost:${port}`);
   console.log(`📊 Ready to serve price comparison requests`);
+  console.log(`🤖 Puppeteer scraper initialized`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await scraper.cleanup();
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 SIGTERM received, shutting down...');
+  await scraper.cleanup();
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });

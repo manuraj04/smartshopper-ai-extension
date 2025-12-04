@@ -6,6 +6,7 @@ const SERVER_BASE = API_CONFIG.backend.baseUrl;
 const USE_REAL_API = API_CONFIG.features.useRealAPI;
 const RAPIDAPI_KEY = API_CONFIG.rapidapi.key;
 const RAPIDAPI_AMAZON_HOST = API_CONFIG.rapidapi.amazon.host;
+const RAPIDAPI_FLIPKART_HOST = API_CONFIG.rapidapi.flipkart.host;
 
 // Get prices from multiple shopping sites
 export async function getPrices(productName, productUrl = null) {
@@ -18,32 +19,48 @@ export async function getPrices(productName, productUrl = null) {
   }
 }
 
-// Real API implementation using RapidAPI
+// Real API implementation using RapidAPI + Extension scraping
 async function fetchRealPrices(productName, productUrl) {
   try {
     const prices = [];
     
-    // Fetch from Amazon using RapidAPI
-    if (productUrl && productUrl.includes('amazon')) {
-      const amazonPrice = await fetchAmazonPrice(productUrl);
-      if (amazonPrice) prices.push(amazonPrice);
-    } else {
-      // Search Amazon by product name
+    // Try RapidAPI first for supported sites
+    if (productUrl) {
+      if (productUrl.includes('amazon')) {
+        const amazonPrice = await fetchAmazonPrice(productUrl);
+        if (amazonPrice) prices.push(amazonPrice);
+      }
+      if (productUrl.includes('flipkart')) {
+        const flipkartPrice = await fetchFlipkartPrice(productUrl);
+        if (flipkartPrice) prices.push(flipkartPrice);
+      }
+    }
+
+    // Search other sites using RapidAPI
+    if (API_CONFIG.rapidapi.amazon.enabled) {
       const amazonResults = await searchAmazonProduct(productName);
-      if (amazonResults && amazonResults.length > 0) {
+      if (amazonResults && amazonResults.length > 0 && !prices.some(p => p.site === 'Amazon')) {
         prices.push(amazonResults[0]);
       }
     }
 
-    // For other sites, use mock data (or add more RapidAPI integrations)
-    const otherSites = getMockPrices(productName).filter(p => p.site !== 'Amazon');
-    prices.push(...otherSites);
+    if (API_CONFIG.rapidapi.flipkart.enabled) {
+      const flipkartResults = await searchFlipkartProduct(productName);
+      if (flipkartResults && flipkartResults.length > 0 && !prices.some(p => p.site === 'Flipkart')) {
+        prices.push(flipkartResults[0]);
+      }
+    }
+
+    // If no results from API, return empty (extension scraping will be used)
+    if (prices.length === 0) {
+      console.log('No API results, extension will use direct scraping');
+      return [];
+    }
 
     return prices.sort((a, b) => a.price - b.price);
   } catch (error) {
     console.error('Error fetching real prices:', error);
-    // Fallback to mock data
-    return getMockPrices(productName);
+    return [];
   }
 }
 
@@ -77,11 +94,15 @@ async function fetchAmazonPrice(productUrl) {
     const data = await response.json();
 
     if (data.data) {
+      // Format price as string with currency symbol to match extension format
+      const priceStr = data.data.product_price || '₹0';
+      
       return {
         site: 'Amazon',
-        price: parseFloat(data.data.product_price?.replace(/[₹,]/g, '') || 0),
-        link: data.data.product_url || productUrl,
-        availability: data.data.product_availability || 'Check Site',
+        price: priceStr, // Keep as string with ₹ symbol
+        url: data.data.product_url || productUrl,
+        status: 'available',
+        productName: data.data.product_title || 'Amazon Product',
         rating: parseFloat(data.data.product_star_rating || 0),
         imageUrl: data.data.product_photo
       };
@@ -115,20 +136,108 @@ async function searchAmazonProduct(productName) {
     const data = await response.json();
 
     if (data.data && data.data.products && data.data.products.length > 0) {
+      // Return top 3 results in extension format
       return data.data.products.slice(0, 3).map(product => ({
         site: 'Amazon',
-        price: parseFloat(product.product_price?.replace(/[₹,]/g, '') || 0),
-        link: product.product_url,
-        availability: product.product_availability || 'Check Site',
+        price: product.product_price || '₹0', // Keep as string
+        url: product.product_url,
+        status: 'available',
+        productName: product.product_title || 'Amazon Product',
         rating: parseFloat(product.product_star_rating || 0),
-        imageUrl: product.product_photo,
-        title: product.product_title
+        imageUrl: product.product_photo
       }));
     }
 
     return [];
   } catch (error) {
     console.error('Error searching Amazon:', error);
+    return [];
+  }
+}
+
+// Fetch Flipkart product details by URL using RapidAPI
+async function fetchFlipkartPrice(productUrl) {
+  try {
+    const response = await fetch(
+      `https://${RAPIDAPI_FLIPKART_HOST}/product/details`,
+      {
+        method: 'POST',
+        headers: {
+          'X-RapidAPI-Host': RAPIDAPI_FLIPKART_HOST,
+          'X-RapidAPI-Key': RAPIDAPI_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url: productUrl })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Flipkart API error:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (data.price) {
+      return {
+        site: 'Flipkart',
+        price: data.price, // Keep as string with ₹
+        url: productUrl,
+        status: 'available',
+        productName: data.title || 'Flipkart Product',
+        rating: parseFloat(data.rating || 0),
+        imageUrl: data.image
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching Flipkart price:', error);
+    return null;
+  }
+}
+
+// Search Flipkart products by name using RapidAPI
+async function searchFlipkartProduct(productName) {
+  try {
+    const response = await fetch(
+      `https://${RAPIDAPI_FLIPKART_HOST}/search`,
+      {
+        method: 'POST',
+        headers: {
+          'X-RapidAPI-Host': RAPIDAPI_FLIPKART_HOST,
+          'X-RapidAPI-Key': RAPIDAPI_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          query: productName,
+          page: 1
+        })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Flipkart search API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (data.products && data.products.length > 0) {
+      return data.products.slice(0, 3).map(product => ({
+        site: 'Flipkart',
+        price: product.price || '₹0', // Keep as string
+        url: product.url,
+        status: 'available',
+        productName: product.title || 'Flipkart Product',
+        rating: parseFloat(product.rating || 0),
+        imageUrl: product.image
+      }));
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error searching Flipkart:', error);
     return [];
   }
 }

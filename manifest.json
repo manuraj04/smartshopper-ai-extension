@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Comparify",
+  "name": "SmartShopper",
   "version": "1.0.0",
   "description": "Compare product prices quickly from the toolbar.",
   "action": {

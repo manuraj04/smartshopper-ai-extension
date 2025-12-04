@@ -95,16 +95,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      // Try to search for the same product on other sites
+      // Start with current site price
       const allPrices = [priceData];
       
-      // Search other sites based on product name
-      if (priceData.productName) {
-        showStatus('🔍 Searching Amazon, Flipkart, Myntra... (takes ~10 sec)');
-        const otherSites = await searchOtherSites(priceData.productName, priceData.site);
-        allPrices.push(...otherSites);
+      // Search other sites using backend matcher
+      if (priceData.productName && priceData.productId) {
+        showStatus('🔍 Searching across sites using smart matcher...');
+        
+        try {
+          // Call backend /v1/search-crosssite endpoint
+          const backendUrl = 'http://localhost:3000/v1/search-crosssite';
+          const params = new URLSearchParams({
+            site: priceData.site.toLowerCase(),
+            id: priceData.productId,
+            title: priceData.productName
+          });
+          
+          console.log('[Compare] Calling backend:', `${backendUrl}?${params}`);
+          const response = await fetch(`${backendUrl}?${params}`);
+          const matchData = await response.json();
+          console.log('[Compare] Backend response:', matchData);
+          
+          if (matchData && matchData.results && matchData.results.length > 0) {
+            console.log('[Compare] Found', matchData.results.length, 'site results');
+            // Add all site results (both available and not available)
+            for (const result of matchData.results) {
+              console.log('[Compare] Site:', result.site, 'available:', result.available, 'score:', result.score);
+              
+              if (result.available) {
+                // Product found on this site
+                allPrices.push({
+                  site: result.site.charAt(0).toUpperCase() + result.site.slice(1),
+                  price: `₹${(result.price_cents / 100).toLocaleString('en-IN')}`,
+                  url: result.url,
+                  status: 'available',
+                  productName: result.title,
+                  matchScore: result.score,
+                  matchQuality: result.match_quality
+                });
+              } else {
+                // Product not available on this site
+                allPrices.push({
+                  site: result.site.charAt(0).toUpperCase() + result.site.slice(1),
+                  price: 'Not Available',
+                  url: result.url, // Search URL as fallback
+                  status: 'not-found',
+                  productName: result.title,
+                  matchScore: result.score,
+                  reason: result.reason
+                });
+              }
+            }
+            
+            const availableCount = matchData.results.filter(r => r.available).length;
+            showStatus(`✅ Found on ${availableCount} other site(s)`);
+          } else {
+            showStatus('⚠️ No matching products found on other sites');
+          }
+        } catch (backendError) {
+          console.warn('Backend matcher failed, trying RapidAPI fallback:', backendError);
+          showStatus('🔍 Backend unavailable, trying RapidAPI...');
+          
+          // Fallback to RapidAPI
+          try {
+            const { getPrices } = await import('../scripts/api.js');
+            const apiPrices = await getPrices(priceData.productName, url);
+            
+            if (apiPrices && apiPrices.length > 0) {
+              const otherSitePrices = apiPrices.filter(p => p.site !== priceData.site);
+              allPrices.push(...otherSitePrices);
+              showStatus('✅ Got prices from RapidAPI');
+            }
+          } catch (apiError) {
+            console.warn('RapidAPI also failed:', apiError);
+            showStatus('⚠️ Could not fetch prices from other sites');
+          }
+        }
       } else {
-        showStatus('⚠️ No product name found, showing current site only.');
+        showStatus('⚠️ Missing product ID or name, showing current site only.');
       }
 
       // Sort by price (lowest first), putting "Not Found" at the end
@@ -142,12 +210,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Track product price
+  trackBtn.addEventListener('click', async () => {
+    try {
+      const url = productUrl.value.trim();
+      if (!url) {
+        showStatus('No product to track');
+        return;
+      }
+
+      // Get current price from latest comparison
+      if (!latestComparisonData || !latestComparisonData.prices || latestComparisonData.prices.length === 0) {
+        showStatus('Please compare prices first');
+        return;
+      }
+
+      const currentPrice = latestComparisonData.prices[0];
+      if (!currentPrice || !currentPrice.price || currentPrice.status === 'not-found') {
+        showStatus('No valid price to track');
+        return;
+      }
+
+      // Extract numeric price
+      const numericPrice = parseFloat(currentPrice.price.replace(/[^0-9.]/g, ''));
+      
+      // Import and use aiEngine functions
+      const { storePriceHistory, getPriceHistory, getAISuggestion } = await import('./scripts/aiEngine.js');
+      
+      // Store price in history
+      await storePriceHistory(url, numericPrice, latestComparisonData.productName);
+      
+      // Get history and show AI suggestion
+      const history = await getPriceHistory(url);
+      const suggestion = getAISuggestion(history);
+      
+      // Show suggestion
+      showStatus(`✅ Tracked! ${suggestion.message}`);
+      trackBtn.textContent = '✓ Tracking';
+      
+      setTimeout(() => {
+        trackBtn.textContent = '📊 Track Price';
+      }, 3000);
+      
+    } catch (err) {
+      console.error('Track error:', err);
+      showStatus('Failed to track product');
+    }
+  });
+
   // Search for product on other sites using background fetch (no visible tabs)
   async function searchOtherSites(productName, currentSite) {
     const sites = [
       { name: 'Amazon', searchUrl: 'https://www.amazon.in/s?k=', domain: 'amazon.in' },
       { name: 'Flipkart', searchUrl: 'https://www.flipkart.com/search?q=', domain: 'flipkart.com' },
-      { name: 'Myntra', searchUrl: 'https://www.myntra.com/', domain: 'myntra.com' }
+      { name: 'Myntra', searchUrl: 'https://www.myntra.com/search?q=', domain: 'myntra.com' }
     ];
 
     const results = [];
@@ -170,14 +286,39 @@ document.addEventListener('DOMContentLoaded', async () => {
           siteName: site.name
         });
 
-        if (response && response.success && response.price) {
-          results.push({
-            site: site.name,
-            price: response.price,
-            url: response.productUrl || searchUrl,
-            status: 'available',
-            productName: response.productName
-          });
+        if (response && response.success && response.searchResults) {
+          // Find best matching product using similarity score
+          let bestMatch = null;
+          let bestScore = 0;
+          const SIMILARITY_THRESHOLD = 0.4; // 40% minimum similarity
+          
+          for (const result of response.searchResults) {
+            const similarity = calculateProductSimilarity(productName, result.productName);
+            if (similarity > bestScore) {
+              bestScore = similarity;
+              bestMatch = result;
+            }
+          }
+          
+          // Only include if similarity is above threshold
+          if (bestMatch && bestScore >= SIMILARITY_THRESHOLD) {
+            results.push({
+              site: site.name,
+              price: bestMatch.price,
+              url: bestMatch.productUrl || searchUrl,
+              status: 'available',
+              productName: bestMatch.productName,
+              matchScore: bestScore
+            });
+          } else {
+            results.push({
+              site: site.name,
+              price: 'N/A',
+              url: searchUrl,
+              status: 'not-found',
+              message: 'Exact match not found'
+            });
+          }
         } else {
           results.push({
             site: site.name,
@@ -230,18 +371,129 @@ document.addEventListener('DOMContentLoaded', async () => {
     return keywords.slice(0, 6).join(' ');
   }
 
+  // Extract product attributes for matching (brand, model, key features)
+  function extractProductAttributes(productName) {
+    // Normalize product name
+    let normalized = productName.toLowerCase().trim();
+    
+    // Extract potential brand (usually first 1-2 words)
+    const words = normalized.split(/\s+/);
+    const brand = words.slice(0, 2).join(' ');
+    
+    // Extract numbers (size, capacity, model numbers)
+    const numbers = productName.match(/\d+(\.\d+)?/g) || [];
+    
+    // Extract units (ml, kg, l, gb, etc.)
+    const units = productName.match(/\d+\s*(ml|l|kg|g|gb|mb|oz|inch|cm|mm)/gi) || [];
+    
+    // Key features extraction (words in all caps or between brackets/parentheses)
+    const capsWords = productName.match(/\b[A-Z]{2,}\b/g) || [];
+    const bracketed = productName.match(/[\(\[](.*?)[\)\]]/g) || [];
+    
+    return {
+      brand,
+      numbers,
+      units,
+      capsWords,
+      bracketed,
+      normalized,
+      keywords: extractKeywords(productName).split(' ')
+    };
+  }
+
+  // Calculate similarity between two products (0-1 score)
+  function calculateProductSimilarity(currentProduct, searchResult) {
+    let score = 0;
+    let totalWeight = 0;
+    
+    const current = extractProductAttributes(currentProduct);
+    const result = extractProductAttributes(searchResult);
+    
+    // Brand matching (high weight - 30%)
+    const brandWeight = 0.3;
+    totalWeight += brandWeight;
+    if (result.normalized.includes(current.brand) || current.normalized.includes(result.brand)) {
+      score += brandWeight;
+    }
+    
+    // Numbers matching (model, size, capacity - 25%)
+    const numberWeight = 0.25;
+    totalWeight += numberWeight;
+    let numberMatches = 0;
+    current.numbers.forEach(num => {
+      if (result.numbers.includes(num)) numberMatches++;
+    });
+    if (current.numbers.length > 0) {
+      score += (numberMatches / current.numbers.length) * numberWeight;
+    }
+    
+    // Units matching (ml, kg, etc. - 20%)
+    const unitWeight = 0.2;
+    totalWeight += unitWeight;
+    let unitMatches = 0;
+    current.units.forEach(unit => {
+      const unitLower = unit.toLowerCase();
+      if (result.units.some(u => u.toLowerCase() === unitLower)) unitMatches++;
+    });
+    if (current.units.length > 0) {
+      score += (unitMatches / current.units.length) * unitWeight;
+    }
+    
+    // Keyword overlap (25%)
+    const keywordWeight = 0.25;
+    totalWeight += keywordWeight;
+    let keywordMatches = 0;
+    current.keywords.forEach(kw => {
+      if (result.keywords.includes(kw)) keywordMatches++;
+    });
+    if (current.keywords.length > 0) {
+      score += (keywordMatches / current.keywords.length) * keywordWeight;
+    }
+    
+    return score;
+  }
+
   // Function to inject into page and extract price
   function extractPriceFromPage() {
     const url = window.location.href;
     let site = 'Unknown';
     let price = null;
     let productName = null;
+    let productId = null;
     let mrp = null;
     let status = 'available';
+
+    // Extract product ID helper (defined inline for injection context)
+    function extractProductIdFromUrl(url, site) {
+      if (site === 'Amazon') {
+        const patterns = [
+          /\/dp\/([A-Z0-9]{10})/,
+          /\/gp\/product\/([A-Z0-9]{10})/,
+          /[?&]asin=([A-Z0-9]{10})/i
+        ];
+        for (const pattern of patterns) {
+          const match = url.match(pattern);
+          if (match) return match[1];
+        }
+      } else if (site === 'Flipkart') {
+        const pidMatch = url.match(/[?&]pid=([A-Z0-9]+)/i);
+        if (pidMatch) return pidMatch[1];
+        const pathMatch = url.match(/\/p\/(itm[a-z0-9]+)/i);
+        if (pathMatch) return pathMatch[1];
+      } else if (site === 'Myntra') {
+        const styleMatch = url.match(/\/(\d{6,10})(?:\/|$|\?)/);
+        if (styleMatch) return styleMatch[1];
+      } else if (site === 'Meesho') {
+        const productMatch = url.match(/\/(?:product|p)\/[^\/]+\/(\d+)|\/p\/(\d+)/);
+        if (productMatch) return productMatch[1] || productMatch[2];
+      }
+      return null;
+    }
 
     // Detect site
     if (url.includes('amazon.')) {
       site = 'Amazon';
+      productId = extractProductIdFromUrl(url, 'Amazon');
       
       // Check if out of stock
       const availabilityElem = document.querySelector('#availability span, #availability');
@@ -315,6 +567,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } else if (url.includes('flipkart.com')) {
       site = 'Flipkart';
+      productId = extractProductIdFromUrl(url, 'Flipkart');
       
       // Check if out of stock
       const stockSelectors = ['._16FRp0', '.availability', '._2aK_ub', 'div._2J33Rc'];
@@ -329,54 +582,114 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
       
-      // Try multiple selectors for Flipkart price (updated for 2025)
+      // Try multiple selectors for Flipkart price (updated for Dec 2024)
       const priceSelectors = [
-        // Main price display
+        // December 2024 structure (most common)
+        'div.Nx9bqj.CxhGGd',
+        'div.hl05eU div.Nx9bqj',
+        
+        // Common class patterns
+        'div.Nx9bqj',
+        'div.CxhGGd',
+        
+        // Alternative current structures  
         'div._30jeq3._16Jk6d',
         'div._30jeq3',
         '._25b18c ._16Jk6d',
         '._25b18c div',
-        
-        // Alternative structures
         '.CEmiEU div._16Jk6d',
-        'div.Nx9bqj.CxhGGd',
         'div._16Jk6d',
+        
+        // Price container patterns
+        '[data-test-id="selling-price"]',
+        '.pPAw9M',
+        '._2Tpdn3',
+        
+        // Generic price patterns (broader search)
+        'div[class*="Nx9bqj"]',
+        'div[class*="CxhGGd"]',
+        'div[class*="30jeq3"]',
+        'div[class*="16Jk6d"]',
         
         // Older patterns (fallback)
         'div._3I9_wc._2p6lqe',
         'div._1vC4OE._3qQ9m1'
       ];
       
+      console.log('[Flipkart Debug] Starting price extraction...');
+      
       for (const selector of priceSelectors) {
         const priceElem = document.querySelector(selector);
-        if (priceElem && priceElem.textContent.trim()) {
+        if (priceElem) {
+          console.log('[Flipkart Debug] Found element with selector:', selector, 'Text:', priceElem.textContent.trim());
           const text = priceElem.textContent.replace(/[^0-9,]/g, '').replace(/,/g, '');
           if (text && parseFloat(text) > 0) {
             price = '₹' + parseInt(text).toLocaleString('en-IN');
+            console.log('[Flipkart Debug] Extracted price:', price);
             break;
           }
+        }
+      }
+      
+      if (!price) {
+        console.log('[Flipkart Debug] No price found with any selector. Trying fallback...');
+        // Fallback: search all text nodes for price pattern
+        const bodyText = document.body.innerText;
+        const priceMatch = bodyText.match(/₹\s*[\d,]+/);
+        if (priceMatch) {
+          const text = priceMatch[0].replace(/[^0-9,]/g, '').replace(/,/g, '');
+          price = '₹' + parseInt(text).toLocaleString('en-IN');
+          console.log('[Flipkart Debug] Fallback found price:', price);
         }
       }
 
       // Get product name
       const nameSelectors = [
+        // December 2024 structure
         'span.VU-ZEz',
+        'h1 span.VU-ZEz',
+        
+        // Alternative structures
         'h1.yhB1nd',
         'span.B_NuCI',
         'h1._6EBuvT',
-        'span._35KyD6'
+        'span._35KyD6',
+        'h1 span',
+        
+        // Data attributes
+        '[data-test-id="product-title"]',
+        
+        // Generic fallback
+        'h1[class*="VU-ZEz"]',
+        'h1[class*="yhB1nd"]',
+        'span[class*="B_NuCI"]',
+        
+        // Broadest fallback - first h1 on page
+        'h1'
       ];
       
       for (const selector of nameSelectors) {
         const nameElem = document.querySelector(selector);
         if (nameElem && nameElem.textContent.trim()) {
           productName = nameElem.textContent.trim();
+          console.log('[Flipkart Debug] Found product name:', productName);
           break;
+        }
+      }
+      
+      if (!productName) {
+        console.log('[Flipkart Debug] No product name found, using URL fallback');
+        // Extract from URL as last resort
+        const urlParts = url.split('/');
+        const slugPart = urlParts.find(part => part.includes('-') && part.length > 10);
+        if (slugPart) {
+          productName = slugPart.replace(/-/g, ' ').split('/')[0];
         }
       }
 
     } else if (url.includes('myntra.com')) {
       site = 'Myntra';
+      productId = extractProductIdFromUrl(url, 'Myntra');
       
       // Check if out of stock
       const stockElem = document.querySelector('.sold-out-title, .inventory-availabilityStatus');
@@ -399,6 +712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       price: price,
       mrp: mrp,
       productName: productName,
+      productId: productId,
       url: window.location.href,
       status: status
     };
@@ -455,13 +769,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // Show different messages based on status
       if (item.status === 'not-found') {
-        priceDiv.textContent = 'Not Found';
-        priceDiv.style.color = '#9ca3af';
-        priceDiv.style.fontSize = '12px';
-        priceDiv.style.fontWeight = '500';
+        priceDiv.textContent = item.price || 'Not Available';
+        priceDiv.style.color = '#dc2626'; // Red color for not available
+        priceDiv.style.fontSize = '13px';
+        priceDiv.style.fontWeight = '600';
+        
+        // Add small info icon with reason
+        if (item.reason) {
+          const infoIcon = document.createElement('span');
+          infoIcon.textContent = ' ℹ️';
+          infoIcon.title = item.reason;
+          infoIcon.style.fontSize = '11px';
+          infoIcon.style.cursor = 'help';
+          priceDiv.appendChild(infoIcon);
+        }
       } else if (item.status === 'out-of-stock') {
         priceDiv.textContent = 'Out of Stock';
-        priceDiv.style.color = '#ef4444';
+        priceDiv.style.color = '#f59e0b'; // Orange color for out of stock
         priceDiv.style.fontSize = '12px';
         priceDiv.style.fontWeight = '600';
       } else {
@@ -471,6 +795,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           priceDiv.style.color = '#065f46'; // Darker green for better contrast
           priceDiv.style.fontWeight = '800';
           priceDiv.style.fontSize = '17px';
+        }
+        
+        // Show match quality badge for scraped results
+        if (item.matchQuality && item.matchQuality !== 'none') {
+          const qualityBadge = document.createElement('span');
+          qualityBadge.style.fontSize = '10px';
+          qualityBadge.style.marginLeft = '6px';
+          qualityBadge.style.opacity = '0.7';
+          qualityBadge.textContent = item.matchQuality === 'excellent' ? '✓✓' : item.matchQuality === 'good' ? '✓' : '~';
+          qualityBadge.title = `Match quality: ${item.matchQuality}`;
+          priceDiv.appendChild(qualityBadge);
         }
       }
       

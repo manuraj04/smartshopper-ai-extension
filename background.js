@@ -9,7 +9,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   // activated
-  console.log('Comparify service worker activated');
+  console.log('SmartShopper service worker activated');
 });
 
 // Handle backend price fetching without opening visible tabs
@@ -43,15 +43,17 @@ async function fetchPriceInBackground(url, siteName) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    let price = null;
-    let productUrl = null;
-    let productName = null;
+    let searchResults = [];
 
     if (siteName === 'Amazon') {
-      // Amazon search results parsing
-      const firstResult = doc.querySelector('[data-component-type="s-search-result"]');
-      if (firstResult) {
-        const priceElem = firstResult.querySelector('.a-price .a-offscreen, .a-price-whole');
+      // Amazon search results parsing - get multiple results for matching
+      const results = doc.querySelectorAll('[data-component-type="s-search-result"]');
+      
+      for (let i = 0; i < Math.min(results.length, 5); i++) {
+        const result = results[i];
+        
+        const priceElem = result.querySelector('.a-price .a-offscreen, .a-price-whole');
+        let price = null;
         if (priceElem) {
           const text = priceElem.textContent.replace(/[^0-9,\.]/g, '').replace(/,/g, '');
           if (text && parseFloat(text) > 0) {
@@ -59,23 +61,33 @@ async function fetchPriceInBackground(url, siteName) {
           }
         }
         
-        const linkElem = firstResult.querySelector('h2 a, .a-link-normal.s-no-outline');
+        const linkElem = result.querySelector('h2 a, .a-link-normal.s-no-outline');
+        let productUrl = null;
         if (linkElem) {
           productUrl = 'https://www.amazon.in' + linkElem.getAttribute('href');
         }
         
-        const nameElem = firstResult.querySelector('h2 span, .a-text-normal');
+        const nameElem = result.querySelector('h2 span, .a-text-normal');
+        let productName = null;
         if (nameElem) {
           productName = nameElem.textContent.trim();
         }
+        
+        if (price && productName) {
+          searchResults.push({ price, productUrl, productName });
+        }
       }
     } else if (siteName === 'Flipkart') {
-      // Flipkart search results parsing
-      const firstResult = doc.querySelector('div._1AtVbE, div._13oc-S, div._2kHMtA, a._1fQZEK');
-      if (firstResult) {
+      // Flipkart search results parsing - get multiple results
+      const results = doc.querySelectorAll('div._1AtVbE, div._13oc-S, div._2kHMtA, a._1fQZEK');
+      
+      for (let i = 0; i < Math.min(results.length, 5); i++) {
+        const result = results[i];
+        
         const priceSelectors = ['div._30jeq3', 'div._3I9_wc', 'div.Nx9bqj'];
+        let price = null;
         for (const selector of priceSelectors) {
-          const priceElem = firstResult.querySelector(selector);
+          const priceElem = result.querySelector(selector);
           if (priceElem && priceElem.textContent.trim()) {
             const text = priceElem.textContent.replace(/[^0-9,]/g, '').replace(/,/g, '');
             if (text && parseFloat(text) > 0) {
@@ -85,26 +97,36 @@ async function fetchPriceInBackground(url, siteName) {
           }
         }
         
-        const linkElem = firstResult.closest('a') || firstResult.querySelector('a');
+        const linkElem = result.closest('a') || result.querySelector('a');
+        let productUrl = null;
         if (linkElem) {
           const href = linkElem.getAttribute('href');
           productUrl = href.startsWith('http') ? href : 'https://www.flipkart.com' + href;
         }
         
         const nameSelectors = ['div._4rR01T', 'a.s1Q9rs', 'div.IRpwTa'];
+        let productName = null;
         for (const selector of nameSelectors) {
-          const nameElem = firstResult.querySelector(selector);
+          const nameElem = result.querySelector(selector);
           if (nameElem && nameElem.textContent.trim()) {
             productName = nameElem.textContent.trim();
             break;
           }
         }
+        
+        if (price && productName) {
+          searchResults.push({ price, productUrl, productName });
+        }
       }
     } else if (siteName === 'Myntra') {
-      // Myntra search results parsing
-      const firstResult = doc.querySelector('.product-base, .product-productMetaInfo');
-      if (firstResult) {
-        const priceElem = firstResult.querySelector('.product-discountedPrice, .product-price');
+      // Myntra search results parsing - get multiple results
+      const results = doc.querySelectorAll('.product-base, .product-productMetaInfo');
+      
+      for (let i = 0; i < Math.min(results.length, 5); i++) {
+        const result = results[i];
+        
+        const priceElem = result.querySelector('.product-discountedPrice, .product-price');
+        let price = null;
         if (priceElem) {
           const text = priceElem.textContent.replace(/[^0-9,]/g, '').replace(/,/g, '');
           if (text && parseFloat(text) > 0) {
@@ -112,23 +134,32 @@ async function fetchPriceInBackground(url, siteName) {
           }
         }
         
-        const linkElem = firstResult.closest('a') || firstResult.querySelector('a');
+        const linkElem = result.closest('a') || result.querySelector('a');
+        let productUrl = null;
         if (linkElem) {
           const href = linkElem.getAttribute('href');
           productUrl = href.startsWith('http') ? href : 'https://www.myntra.com' + href;
         }
+        
+        const nameElem = result.querySelector('.product-product, .product-brand, h3, h4');
+        let productName = null;
+        if (nameElem) {
+          productName = nameElem.textContent.trim();
+        }
+        
+        if (price && productName) {
+          searchResults.push({ price, productUrl, productName });
+        }
       }
     }
 
-    if (price) {
+    if (searchResults.length > 0) {
       return {
         success: true,
-        price,
-        productUrl,
-        productName
+        searchResults // Return all results for matching
       };
     } else {
-      return { success: false, error: 'Price not found' };
+      return { success: false, error: 'No products found' };
     }
 
   } catch (err) {
