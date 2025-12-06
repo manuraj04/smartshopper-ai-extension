@@ -251,7 +251,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - GitHub: [@soumya0416](https://github.com/soumya0416)
 - Repository: [smartshopper-ai-extension](https://github.com/manuraj04/smartshopper-ai-extension)
 
-**Manu Raj**
+**Harsh Raj**
 
 - GitHub: [@harshraj8244](https://github.com/harshraj8244)
 - Repository: [smartshopper-ai-extension](https://github.com/manuraj04/smartshopper-ai-extension)
