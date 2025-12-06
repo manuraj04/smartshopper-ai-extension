@@ -18,7 +18,7 @@
 const express = require('express');
 const router = express.Router();
 const { findBestMatch } = require('../matcher');
-const { scrapeSearchResults, searchFlipkartRapidAPI } = require('../utils/scraper');
+const { scrapeSearchResults, searchFlipkartRapidAPI, searchAmazonRapidAPI } = require('../utils/scraper');
 
 // Mock candidate database
 // In production, replace with actual DB queries or scraper results
@@ -145,7 +145,7 @@ async function loadCandidates(query, excludeSite) {
   console.log(`[Search Cross-Site] 🔍 Scraping real prices for: "${query}"`);
   
   const candidates = [];
-  const sites = ['flipkart', 'myntra', 'meesho']; // Amazon is usually the source
+  const sites = ['amazon', 'flipkart', 'myntra', 'meesho']; // All supported sites
   
   // Scrape each site in parallel for speed
   const scrapePromises = sites
@@ -156,27 +156,34 @@ async function loadCandidates(query, excludeSite) {
         
         let results = [];
         
-        // Use RapidAPI for Flipkart (faster and more reliable)
+        // Use RapidAPI for Flipkart and Amazon (faster and more reliable)
         if (site === 'flipkart') {
           results = await searchFlipkartRapidAPI(query, 3);
           console.log(`[Search Cross-Site] ✅ Flipkart RapidAPI returned ${results.length} products`);
+        } else if (site === 'amazon') {
+          results = await searchAmazonRapidAPI(query, 3);
+          console.log(`[Search Cross-Site] ✅ Amazon RapidAPI returned ${results.length} products`);
         } else {
-          // Use Puppeteer for other sites
+          // Use Puppeteer for other sites (Myntra, Meesho)
           results = await scrapeSearchResults(site, query, 3);
         }
         
         // Convert scraper format to matcher format
-        return results.map(product => ({
-          site: site,
-          site_id: extractProductId(product.url, site) || `${site}_${Date.now()}`,
-          title: product.productName,
-          price_cents: Math.round(product.numericPrice * 100),
-          url: product.url,
-          image: product.image || 'https://via.placeholder.com/300',
-          scraped_at: product.scrapedAt,
-          rating: product.rating,
-          source: product.source || 'puppeteer'
-        }));
+        return results.map(product => {
+          const priceCents = Math.round((product.numericPrice || 0) * 100);
+          console.log(`[Search Cross-Site] 💰 ${site} product: "${product.productName?.substring(0, 50)}..." - ₹${product.numericPrice} (${priceCents} cents)`);
+          return {
+            site: site,
+            site_id: extractProductId(product.url, site) || `${site}_${Date.now()}`,
+            title: product.productName,
+            price_cents: priceCents,
+            url: product.url,
+            image: product.image || 'https://via.placeholder.com/300',
+            scraped_at: product.scrapedAt,
+            rating: product.rating,
+            source: product.source || 'puppeteer'
+          };
+        });
       } catch (err) {
         console.error(`[Search Cross-Site] ❌ Error scraping ${site}:`, err.message);
         return [];

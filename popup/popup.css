@@ -93,10 +93,6 @@ textarea#ai-input::placeholder{color:var(--muted)}
 .primary.full{width:100%}
 .tiny{font-size:11px;margin-top:6px;color:var(--muted);text-align:center}
 
-/* track */
-.track{width:100%;padding:12px;border-radius:10px;border:0;background:linear-gradient(135deg,#10b981,#059669);color:#fff;margin-top:8px;cursor:pointer;font-weight:600;font-size:13px;transition:all 0.2s;box-shadow:var(--shadow-sm)}
-.track:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(16,185,129,0.3)}
-
 /* === FIX: Make card sections readable === */
 .card {
   background-color: var(--card);

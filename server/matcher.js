@@ -228,7 +228,12 @@ function findBestMatch(source, candidates) {
     reason: best.reason,
     allScores: scored.map(s => ({
       site: s.candidate.site,
+      site_id: s.candidate.site_id,
       title: s.candidate.title,
+      price_cents: s.candidate.price_cents,
+      url: s.candidate.url,
+      image: s.candidate.image,
+      rating: s.candidate.rating,
       score: s.score,
       reason: s.reason.breakdown.join(', ')
     }))

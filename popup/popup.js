@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const priceComp = document.getElementById('price-comparison');
   const priceTable = document.getElementById('price-table');
   const status = document.getElementById('status');
-  const trackBtn = document.getElementById('track-product');
 
   // Auto-load current tab URL
   try {
@@ -115,18 +114,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           const response = await fetch(`${backendUrl}?${params}`);
           const matchData = await response.json();
           console.log('[Compare] Backend response:', matchData);
+          console.log('[Compare] Results array:', matchData.results);
           
           if (matchData && matchData.results && matchData.results.length > 0) {
             console.log('[Compare] Found', matchData.results.length, 'site results');
             // Add all site results (both available and not available)
             for (const result of matchData.results) {
-              console.log('[Compare] Site:', result.site, 'available:', result.available, 'score:', result.score);
+              console.log('[Compare] Site:', result.site, 'available:', result.available, 'price_cents:', result.price_cents, 'score:', result.score);
               
               if (result.available) {
-                // Product found on this site
+                // Product found on this site - show the price with decimals
+                const priceValue = ((result.price_cents || 0) / 100).toFixed(2);
                 allPrices.push({
                   site: result.site.charAt(0).toUpperCase() + result.site.slice(1),
-                  price: `₹${(result.price_cents / 100).toLocaleString('en-IN')}`,
+                  price: `₹${priceValue}`,
                   url: result.url,
                   status: 'available',
                   productName: result.title,
@@ -190,7 +191,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Display all prices
       displayRealPrices(allPrices, priceData.site);
       priceComp.classList.remove('hidden');
-      trackBtn.classList.remove('hidden');
       
       // Store comparison data for AI
       latestComparisonData = {
@@ -209,54 +209,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       showStatus('Failed to extract price.');
     }
   }
-
-  // Track product price
-  trackBtn.addEventListener('click', async () => {
-    try {
-      const url = productUrl.value.trim();
-      if (!url) {
-        showStatus('No product to track');
-        return;
-      }
-
-      // Get current price from latest comparison
-      if (!latestComparisonData || !latestComparisonData.prices || latestComparisonData.prices.length === 0) {
-        showStatus('Please compare prices first');
-        return;
-      }
-
-      const currentPrice = latestComparisonData.prices[0];
-      if (!currentPrice || !currentPrice.price || currentPrice.status === 'not-found') {
-        showStatus('No valid price to track');
-        return;
-      }
-
-      // Extract numeric price
-      const numericPrice = parseFloat(currentPrice.price.replace(/[^0-9.]/g, ''));
-      
-      // Import and use aiEngine functions
-      const { storePriceHistory, getPriceHistory, getAISuggestion } = await import('./scripts/aiEngine.js');
-      
-      // Store price in history
-      await storePriceHistory(url, numericPrice, latestComparisonData.productName);
-      
-      // Get history and show AI suggestion
-      const history = await getPriceHistory(url);
-      const suggestion = getAISuggestion(history);
-      
-      // Show suggestion
-      showStatus(`✅ Tracked! ${suggestion.message}`);
-      trackBtn.textContent = '✓ Tracking';
-      
-      setTimeout(() => {
-        trackBtn.textContent = '📊 Track Price';
-      }, 3000);
-      
-    } catch (err) {
-      console.error('Track error:', err);
-      showStatus('Failed to track product');
-    }
-  });
 
   // Search for product on other sites using background fetch (no visible tabs)
   async function searchOtherSites(productName, currentSite) {

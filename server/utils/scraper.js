@@ -8,19 +8,28 @@ const path = require('path');
 // Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-// RapidAPI configuration for Flipkart
+// RapidAPI configuration
 const RAPIDAPI_CONFIG = {
   flipkart: {
     url: process.env.RAPIDAPI_FLIPKART_URL || 'https://real-time-flipkart-scraper.p.rapidapi.com/fk-product-details',
     key: process.env.RAPIDAPI_FLIPKART_KEY || '',
     host: process.env.RAPIDAPI_FLIPKART_HOST || 'real-time-flipkart-scraper.p.rapidapi.com'
+  },
+  amazon: {
+    url: process.env.RAPIDAPI_AMAZON_URL || 'https://real-time-amazon-data.p.rapidapi.com',
+    key: process.env.RAPIDAPI_AMAZON_KEY || '',
+    host: process.env.RAPIDAPI_AMAZON_HOST || 'real-time-amazon-data.p.rapidapi.com'
   }
 };
 
-// Validate API key is configured
+// Validate API keys are configured
 if (!RAPIDAPI_CONFIG.flipkart.key) {
   console.warn('⚠️  WARNING: RAPIDAPI_FLIPKART_KEY not configured. Flipkart scraping will fail.');
   console.warn('   Please set RAPIDAPI_FLIPKART_KEY in server/.env file');
+}
+if (!RAPIDAPI_CONFIG.amazon.key) {
+  console.warn('⚠️  WARNING: RAPIDAPI_AMAZON_KEY not configured. Amazon scraping will fall back to Puppeteer.');
+  console.warn('   Please set RAPIDAPI_AMAZON_KEY in server/.env file');
 }
 
 // Try to find Chrome executable
@@ -601,6 +610,91 @@ async function searchFlipkartRapidAPI(query, maxResults = 5) {
   }
 }
 
+/**
+ * Search Amazon using RapidAPI (real-time-amazon-data)
+ * @param {string} query - Search query
+ * @param {number} maxResults - Maximum number of results to return (default 5)
+ * @returns {Promise<Array>} Array of product objects
+ */
+async function searchAmazonRapidAPI(query, maxResults = 5) {
+  try {
+    if (!RAPIDAPI_CONFIG.amazon.key) {
+      console.warn('[RapidAPI] Amazon API key not configured, skipping...');
+      return [];
+    }
+    
+    console.log(`[RapidAPI] Searching Amazon for: "${query}"`);
+    
+    const url = `${RAPIDAPI_CONFIG.amazon.url}/search?query=${encodeURIComponent(query)}&page=1&country=IN&sort_by=RELEVANCE&product_condition=ALL`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_CONFIG.amazon.key,
+        'x-rapidapi-host': RAPIDAPI_CONFIG.amazon.host
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`[RapidAPI] Amazon API error: ${response.status} ${response.statusText}`);
+      return [];
+    }
+    
+    const data = await response.json();
+    console.log(`[RapidAPI] Amazon returned ${data.data?.products?.length || 0} products`);
+    
+    if (!data.data?.products || data.data.products.length === 0) {
+      console.log('[RapidAPI] No Amazon products found');
+      return [];
+    }
+    
+    // Convert Amazon API format to standard format
+    return data.data.products.map(product => {
+      // Try multiple price fields from Amazon API
+      const priceText = product.product_price || 
+                       product.product_minimum_offer_price || 
+                       product.product_original_price || 
+                       '';
+      
+      console.log(`[RapidAPI] 🏷️ Amazon ASIN ${product.asin}:`, {
+        product_price: product.product_price,
+        product_minimum_offer_price: product.product_minimum_offer_price,
+        product_original_price: product.product_original_price,
+        priceText: priceText
+      });
+      
+      const price = extractPrice(String(priceText));
+      
+      // Log if price extraction failed
+      if (!price || !price.numeric) {
+        console.warn(`[RapidAPI] ⚠️ Price extraction FAILED for ${product.asin}`, {
+          priceText: priceText,
+          extracted: price
+        });
+      }
+      
+      return {
+        site: 'Amazon',
+        productName: product.product_title || product.product_name,
+        price: price ? price.formatted : '₹0',
+        numericPrice: price && price.numeric ? price.numeric : 0,
+        url: product.product_url || `https://www.amazon.in/dp/${product.asin}`,
+        availability: product.is_prime ? 'Prime' : 'In Stock',
+        rating: product.product_star_rating || null,
+        reviews: product.product_num_ratings || null,
+        image: product.product_photo || null,
+        asin: product.asin || null,
+        scrapedAt: new Date().toISOString(),
+        source: 'rapidapi'
+      };
+    }).slice(0, maxResults);
+    
+  } catch (err) {
+    console.error(`[RapidAPI] Error searching Amazon:`, err.message);
+    return []; // Return empty array on error
+  }
+}
+
 // Clean up browser on shutdown
 async function cleanup() {
   if (browserInstance) {
@@ -615,6 +709,7 @@ module.exports = {
   scrapeSearchResults,
   scrapeFlipkartRapidAPI,
   searchFlipkartRapidAPI,
+  searchAmazonRapidAPI,
   scrapePrice, 
   estimateTrend,
   analyzePriceHistory,
